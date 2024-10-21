@@ -7,6 +7,7 @@ from jaxopt import OptaxSolver
 import optax
 from sklearn import model_selection
 from sklearn import preprocessing
+from sklearn.datasets import fetch_california_housing
 
 
 def ridge_objective(params, l2reg, data):
@@ -52,7 +53,6 @@ def main(argv):
 
   # load data
   housing = fetch_california_housing()
-  print(housing)
   X, y = housing['data'], housing['target']
   X = preprocessing.normalize(X)
   # data = (X_tr, X_val, y_tr, y_val)
@@ -60,17 +60,17 @@ def main(argv):
 
   # Initialize solver.
   solver = OptaxSolver(opt=optax.adam(1e-2), fun=outer_objective, has_aux=True)
-  theta = 1.0
+  theta = 10.0
   init_w = jnp.zeros(X.shape[1])
   state = solver.init_state(theta, init_inner=init_w, data=data)
 
   # Run outer loop.
-  for _ in range(50):
+  for _ in range(200):
     theta, state = solver.update(params=theta, state=state, init_inner=init_w,
                                  data=data)
     # The auxiliary data returned by the outer loss is stored in the state.
     init_w = state.aux
-    print(f"[Step {state.iter_num}] Validation loss: {state.value:.3f}.")
+    print(f"[Step {state.iter_num}] Validation loss: {state.value:.3f}, theta: {theta:.3f}.")
 
 
 if __name__ == "__main__":
