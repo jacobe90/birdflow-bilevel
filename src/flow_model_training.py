@@ -6,8 +6,14 @@ import optax
 from collections import namedtuple
 
 import jax.numpy as jnp
-from jax import jit, value_and_grad, vmap
+from jax import jit, value_and_grad, grad, vmap
 from scipy.spatial.distance import pdist, squareform
+
+from ott.solvers import linear
+from ott.geometry import pointcloud
+from ott import utils
+from jaxtyping import Array, Float, Int
+from ott.solvers.linear.implicit_differentiation import ImplicitDiff
 
 Datatuple = namedtuple('Datatuple', ['weeks', 'cells', 'distances', 'masks'])
 
@@ -27,6 +33,7 @@ def process_data(data_array):
 
 
 def mask_input(true_densities, dtuple):
+    
     distance_matrix = jnp.zeros((dtuple.cells, dtuple.cells))
     distance_matrix = distance_matrix.at[jnp.triu_indices(dtuple.cells, k=1)].set(dtuple.distances)
     distance_matrix = distance_matrix + distance_matrix.T
@@ -39,8 +46,18 @@ def mask_input(true_densities, dtuple):
     for density, mask in zip(true_densities, dtuple.masks):
         masked_densities.append(density[mask])
         
-    return distance_matrices, masked_densities
-    
+    return distance_matrices, masked_densities, coordinates_for_week
+
+sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
+
+def w2_obs_loss(pred_densities, true_densities, geometries):
+    w2_obs = 0
+    for pred, true, geometry in zip(pred_densities, true_densities, geometries):
+        geom = pointcloud.PointCloud(geometry, geometry, epsilon=None)  # TODO: add distance matrix from hdf5 to geom?
+        ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
+        w2_obs += ot.reg_ot_cost
+    return w2_obs
+
 def obs_loss(pred_densities, true_densities):
     obs = 0
     for pred, true in zip(pred_densities, true_densities):
@@ -68,7 +85,19 @@ def ent_loss(probs, flows):
         ent -= entropy(f)
     return ent
 
-def loss_fn(params, cells, true_densities, d_matrices, obs_weight, dist_weight, ent_weight):
+def w2_loss_fn(params, cells, true_densities, d_matrices, geometries, obs_weight, dist_weight, ent_weight):
+    weeks = len(true_densities)
+    pred = model_forward.apply(params, None, cells, weeks)
+    d0, flows = pred
+    pred_densities = [d0] + [jnp.sum(flow, axis=0) for flow in flows]
+    
+    obs = w2_obs_loss(pred_densities, true_densities, geometries)
+    dist = distance_loss(flows, d_matrices)
+    ent = ent_loss(flows, pred_densities)
+    
+    return (obs_weight * obs) + (dist_weight * dist) + (-1 * ent_weight * ent), (obs, dist, ent)
+
+def loss_fn(params, cells, true_densities, d_matrices, obs_weight, dist_weight, ent_weight, use_w2 = True):
     weeks = len(true_densities)
     pred = model_forward.apply(params, None, cells, weeks)
     d0, flows = pred
@@ -105,6 +134,7 @@ def train_model(loss_fn,
     }
 
     for step in range(training_steps):
+        print(f"step {step}")
         params, opt_state, loss = update(params, opt_state)
         total_loss, loss_components = loss
         obs, dist, ent = loss_components
