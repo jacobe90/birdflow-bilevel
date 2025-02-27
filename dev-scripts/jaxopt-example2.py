@@ -44,7 +44,7 @@ def outer_objective(theta, init_inner, data):
   X_tr, X_val, y_tr, y_val = data
   # We use the bijective mapping lam = jnp.exp(theta) to ensure positivity.
   lam = jnp.exp(theta)
-
+  
   if FLAGS.solver == "pg":
     solver = ProximalGradient(
         fun=objective.least_squares,
