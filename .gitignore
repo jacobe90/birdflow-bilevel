@@ -1,3 +1,6 @@
+# ebird data R scripts & hdfs
+ebird-data-loading/
+
 # stuff from scikit-learn
 dev-notebooks/CIFAR10
 dev-notebooks/MNIST
