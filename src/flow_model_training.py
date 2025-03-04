@@ -10,12 +10,13 @@ from jax import jit, value_and_grad, grad, vmap
 from scipy.spatial.distance import pdist, squareform
 
 from ott.solvers import linear
-from ott.geometry import pointcloud
+from ott.geometry import pointcloud, geometry
 from ott import utils
 from jaxtyping import Array, Float, Int
 from ott.solvers.linear.implicit_differentiation import ImplicitDiff
 
-Datatuple = namedtuple('Datatuple', ['weeks', 'cells', 'distances', 'masks'])
+Datatuple = namedtuple('Datatuple', ['weeks', 'ncol', 'nrow', 'cells', 'distances', 'masks', 'big_mask'])
+
 
 def process_data(data_array):
     weeks, y_dim, x_dim = data_array.shape
@@ -42,20 +43,46 @@ def mask_input(true_densities, dtuple):
     for i in range(0, dtuple.weeks - 1):
         distance_matrices.append(distance_matrix[dtuple.masks[i], :][:, dtuple.masks[i + 1]])
 
+    distance_matrices_for_week = []
+    for i in range(dtuple.weeks):
+        distance_matrices_for_week.append(distance_matrix[dtuple.masks[i], :][:, dtuple.masks[i]])
+
     masked_densities = []
     for density, mask in zip(true_densities, dtuple.masks):
         masked_densities.append(density[mask])
-        
-    return distance_matrices, masked_densities, coordinates_for_week
+    
+    # initialize coordinate grid
+    y = jnp.arange(0, dtuple.nrow, 1)
+    x = jnp.arange(0, dtuple.ncol, 1)
+    xv, yv = jnp.meshgrid(x, y)
+    xy = jnp.stack([xv.flatten(), yv.flatten()], axis=1)
+    coord_grid = xy[dtuple.big_mask, :]
+    
+    # get list of coordinates of cells for each week
+    coordinates_for_week = []
+    for mask in dtuple.masks:
+        coordinates_for_week.append(coord_grid[mask])
+    
+    return distance_matrices, distance_matrices_for_week, masked_densities
 
 sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
 
-def w2_obs_loss(pred_densities, true_densities, geometries):
+# class CustomCostMatrix(CostFn):
+#     def __init__(self):
+#         pass
+#     def __call__(self, x, y):
+#         pass
+#     def __call__()
+
+def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week):
     w2_obs = 0
-    for pred, true, geometry in zip(pred_densities, true_densities, geometries):
-        geom = pointcloud.PointCloud(geometry, geometry, epsilon=None)  # TODO: add distance matrix from hdf5 to geom?
+    count = 0
+    for pred, true, d_matrix in zip(pred_densities, true_densities, d_matrices_for_week):
+        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)  # TODO: get matrix of distances between points for a given week 
         ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
         w2_obs += ot.reg_ot_cost
+        count += 1
+        print(f"computed w2 loss for week {count}")
     return w2_obs
 
 def obs_loss(pred_densities, true_densities):
@@ -85,19 +112,19 @@ def ent_loss(probs, flows):
         ent -= entropy(f)
     return ent
 
-def w2_loss_fn(params, cells, true_densities, d_matrices, geometries, obs_weight, dist_weight, ent_weight):
+def w2_loss_fn(params, cells, true_densities, d_matrices, d_matrices_for_week, obs_weight, dist_weight, ent_weight):
     weeks = len(true_densities)
     pred = model_forward.apply(params, None, cells, weeks)
     d0, flows = pred
     pred_densities = [d0] + [jnp.sum(flow, axis=0) for flow in flows]
     
-    obs = w2_obs_loss(pred_densities, true_densities, geometries)
+    obs = w2_obs_loss(pred_densities, true_densities, d_matrices_for_week)
     dist = distance_loss(flows, d_matrices)
     ent = ent_loss(flows, pred_densities)
     
     return (obs_weight * obs) + (dist_weight * dist) + (-1 * ent_weight * ent), (obs, dist, ent)
 
-def loss_fn(params, cells, true_densities, d_matrices, obs_weight, dist_weight, ent_weight, use_w2 = True):
+def loss_fn(params, cells, true_densities, d_matrices, obs_weight, dist_weight, ent_weight):
     weeks = len(true_densities)
     pred = model_forward.apply(params, None, cells, weeks)
     d0, flows = pred
