@@ -34,7 +34,6 @@ def process_data(data_array):
 
 
 def mask_input(true_densities, dtuple):
-    
     distance_matrix = jnp.zeros((dtuple.cells, dtuple.cells))
     distance_matrix = distance_matrix.at[jnp.triu_indices(dtuple.cells, k=1)].set(dtuple.distances)
     distance_matrix = distance_matrix + distance_matrix.T
@@ -78,7 +77,7 @@ def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week):
     w2_obs = 0
     count = 0
     for pred, true, d_matrix in zip(pred_densities, true_densities, d_matrices_for_week):
-        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)  # TODO: get matrix of distances between points for a given week 
+        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)
         ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
         w2_obs += ot.reg_ot_cost
         count += 1
