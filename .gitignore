@@ -1,3 +1,6 @@
+# experiment results
+experiment-results/
+
 # slurm stuff
 *.out
 
