@@ -16,6 +16,7 @@ from ott.geometry.costs import CostFn
 from ott.solvers import linear
 from ott.solvers.linear.implicit_differentiation import ImplicitDiff
 from jax import value_and_grad
+import jax
 from jaxtyping import Float, Array, Int
 from typing import Any, Union
 import functools
@@ -28,6 +29,12 @@ from beartype import (
     BeartypeStrategy,
 )
 import shutil
+
+
+def pytree_norm(pytree, ord=2):
+    """Computes the norm of a PyTree (default: L2 norm)."""
+    leaves = jax.tree_util.tree_leaves(pytree)  # Extract all array leaves
+    return jnp.sqrt(sum(jnp.linalg.norm(leaf, ord=ord)**2 for leaf in leaves))
 
 def train_model_and_measure_w2_loss_and_grads(loss_fn,
                                               w2_loss_fn,
@@ -44,7 +51,7 @@ def train_model_and_measure_w2_loss_and_grads(loss_fn,
         w2_loss, w2_grads = value_and_grad(w2_loss_fn, has_aux=True)(params)
         updates, new_opt_state = optimizer.update(grads, opt_state)
         new_params = optax.apply_updates(params, updates)
-        return new_params, new_opt_state, loss, w2_loss, jnp.linalg.norm(w2_grads, ord=2)
+        return new_params, new_opt_state, loss, w2_loss, pytree_norm(w2_grads, ord=2)
 
     update = jit(update)
 
