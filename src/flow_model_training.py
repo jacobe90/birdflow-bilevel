@@ -64,24 +64,21 @@ def mask_input(true_densities, dtuple):
     
     return distance_matrices, distance_matrices_for_week, masked_densities
 
+def get_epsilons(d_matrices_for_week):
+    epsilons = []
+    for d_matrix in d_matrices_for_week:
+        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)
+        epsilons.append(2 * geom.epsilon)   # set to 2 * the default epsilon, based on mean of cost matrix
+    return epsilons
+
 sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
 
-# class CustomCostMatrix(CostFn):
-#     def __init__(self):
-#         pass
-#     def __call__(self, x, y):
-#         pass
-#     def __call__()
-
-def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week):
+def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week, epsilons):
     w2_obs = 0
-    count = 0
-    for pred, true, d_matrix in zip(pred_densities, true_densities, d_matrices_for_week):
-        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)
+    for pred, true, d_matrix, eps in zip(pred_densities, true_densities, d_matrices_for_week, epsilons):
+        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=eps)
         ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
         w2_obs += ot.reg_ot_cost
-        count += 1
-        print(f"computed w2 loss for week {count}")
     return w2_obs
 
 def obs_loss(pred_densities, true_densities):
@@ -111,13 +108,13 @@ def ent_loss(probs, flows):
         ent -= entropy(f)
     return ent
 
-def w2_loss_fn(params, cells, true_densities, d_matrices, d_matrices_for_week, obs_weight, dist_weight, ent_weight):
+def w2_loss_fn(params, cells, true_densities, d_matrices, d_matrices_for_week, epsilons, obs_weight, dist_weight, ent_weight):
     weeks = len(true_densities)
     pred = model_forward.apply(params, None, cells, weeks)
     d0, flows = pred
     pred_densities = [d0] + [jnp.sum(flow, axis=0) for flow in flows]
-    
-    obs = w2_obs_loss(pred_densities, true_densities, d_matrices_for_week)
+
+    obs = w2_obs_loss(pred_densities, true_densities, d_matrices_for_week, epsilons)
     dist = distance_loss(flows, d_matrices)
     ent = ent_loss(flows, pred_densities)
     
