@@ -30,7 +30,6 @@ from beartype import (
 )
 import shutil
 
-
 def pytree_norm(pytree, ord=2):
     """Computes the norm of a PyTree (default: L2 norm)."""
     leaves = jax.tree_util.tree_leaves(pytree)  # Extract all array leaves
@@ -88,8 +87,8 @@ def train_model_and_measure_w2_loss_and_grads(loss_fn,
     return params, loss_dict, w2_loss_dict
 
 
-root = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/'
-out_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results'
+root = '/Users/jacobepstein/Documents/work/birdflow/birdflow-bilevel/ebird-data-loading'
+out_dir = '/Users/jacobepstein/Documents/work/birdflow/birdflow-bilevel/experiment-results'
 species = 'amewoo'
 ebirdst_year = 2021
 resolution = 100 
@@ -99,10 +98,10 @@ ent_weight = 0
 dist_pow = 0.4
 dont_normalize = False
 learning_rate = 0.1
-training_steps = 600
+training_steps = 3
 rng_seed = 42
 save_pkl = True
-weeks = 5
+
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
 hdf_dst = os.path.join(out_dir, f'{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
@@ -111,15 +110,18 @@ shutil.copyfile(hdf_src, hdf_dst)
 
 file = h5py.File(hdf_dst, 'r+')
 
-true_densities = np.asarray(file['distr']).T[:weeks]
+true_densities = np.asarray(file['distr']).T
+
+
+weeks = true_densities.shape[0]
 total_cells = true_densities.shape[1]
 
 distance_vector = np.asarray(file['distances'])**dist_pow
 if not dont_normalize:
     distance_vector *= 1 / (100**dist_pow)
+masks = np.asarray(file['geom']['dynamic_mask']).T.astype(bool)
 
 ncol, nrow, dynamic_masks, big_mask = get_plot_parameters(hdf_src)
-dynamic_masks = dynamic_masks[:weeks]
 dtuple = Datatuple(weeks, ncol, nrow, total_cells, distance_vector, dynamic_masks, big_mask)
 distance_matrices, distance_matrices_for_week, masked_densities = mask_input(true_densities, dtuple)
 cells = [d.shape[0] for d in masked_densities]
@@ -129,6 +131,7 @@ key = hk.PRNGSequence(rng_seed)
 optimizer = optax.adam(learning_rate)
 
 # Instantiate loss function
+print("over here!")
 loss_fn = jit(partial(loss_fn,
                       cells=cells,
                       true_densities=masked_densities, 
