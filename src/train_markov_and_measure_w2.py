@@ -84,7 +84,8 @@ def train_model_and_measure_w2_loss_and_grads(loss_fn,
         w2_loss_dict['total'].append(float(w2_total))
         w2_loss_dict['obs'].append(float(w2_obs))
         w2_loss_dict['dist'].append(float(w2_dist))
-        w2_loss_dict['ent'].append(float(w2_ent))     
+        w2_loss_dict['ent'].append(float(w2_ent))
+        w2_loss_dict['norm_w2_grad'].append(float(norm_w2_grad))     
     return params, loss_dict, w2_loss_dict
 
 
