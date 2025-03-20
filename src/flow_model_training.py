@@ -96,7 +96,7 @@ def get_epsilons(d_matrices_for_week):
     epsilons = []
     for d_matrix in d_matrices_for_week:
         geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)
-        epsilons.append(2 * geom.epsilon)   # set to 2 * the default epsilon, based on mean of cost matrix
+        epsilons.append(geom.epsilon)   # get the default epsilon, based on mean of cost matrix
     return epsilons
 
 sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
