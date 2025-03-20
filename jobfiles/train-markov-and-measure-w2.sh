@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH -c 2
-#SBATCH --mem=5GB
-#SBATCH -p gpu
-#SBATCH -G 1
+#SBATCH -c 4
+#SBATCH --mem=10GB
+#SBATCH -p gypsum-1080ti
+#SBATCH -G 3
 #SBATCH -t 1:00:00
 #SBATCH -o slurm-%x.%j.out
 
