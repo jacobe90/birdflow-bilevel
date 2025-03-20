@@ -89,7 +89,7 @@ class Scheduler:
 
 def get_epsilon_schedulers(d_matrices_for_week, start, final, decay_iters, decay_after):
     eps_defaults = get_epsilons(d_matrices_for_week)
-    return list(map(lambda eps: Scheduler(eps, start, final, decay_iters, decay_after), 
+    return tuple(map(lambda eps: Scheduler(eps, start, final, decay_iters, decay_after), 
                     eps_defaults))
 
 def get_epsilons(d_matrices_for_week):
@@ -97,16 +97,19 @@ def get_epsilons(d_matrices_for_week):
     for d_matrix in d_matrices_for_week:
         geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=None)
         epsilons.append(geom.epsilon)   # get the default epsilon, based on mean of cost matrix
-    return epsilons
+    return list(epsilons)
 
 sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
+
+def w2_distance(pred, true, d_matrix, eps):
+    geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=eps)
+    ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
+    return ot.reg_ot_cost
 
 def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week, epsilons):
     w2_obs = 0
     for pred, true, d_matrix, eps in zip(pred_densities, true_densities, d_matrices_for_week, epsilons):
-        geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=eps)
-        ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
-        w2_obs += ot.reg_ot_cost
+        w2_obs += w2_distance(pred, true, d_matrix, eps)
     return w2_obs
 
 def obs_loss(pred_densities, true_densities):
