@@ -3,7 +3,7 @@ import h5py
 import os
 import sys
 sys.path.append(os.path.abspath("birdflow-bilevel/src/"))
-from flow_model_training import loss_fn, mask_input, Datatuple, train_model, w2_loss_fn
+from flow_model_training import mask_input, Datatuple, train_model, w2_loss_fn
 from flow_model import model_forward
 from hdfs import get_plot_parameters
 import numpy as np
@@ -29,8 +29,12 @@ from beartype import (
     BeartypeStrategy,
 )
 
-
 hdf_src = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/amewoo_2021_39km.hdf5'
+
+# initialize search over thresholds
+thresholds = jnp.linspace(1e-3, 5e-2, 10)
+task_idx = int(os.getenv("SLURM_ARRAY_TASK_ID"))
+threshold = thresholds[task_idx]
 
 with h5py.File(hdf_src, 'r') as file:
     true_densities = np.asarray(file['distr']).T
@@ -51,8 +55,10 @@ for i, distance_matrix in enumerate(distance_matrices_for_week):
     geom = Geometry(cost_matrix=distance_matrix, epsilon=None)
     eps_defaults.append(geom.epsilon)
 
-sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
-
+sinkhorn_solver = jit(partial(linear.solve,
+                              max_iterations=5000,
+                              threshold=threshold,
+                              implicit_diff=ImplicitDiff()))
 class Scheduler:
     @beartype(conf=BeartypeConf(strategy=(BeartypeStrategy.O0)))
     def __init__(self, target, init, decay, decay_after):
@@ -74,7 +80,7 @@ class Scheduler:
 
 def w2_distance(mu: Float[Array, "n "], mu_true: Float[Array, "n "], distance_matrix: Float[Array, "n n"], epsilon: Union[Float[Array, ""], Any]):
     geom = Geometry(cost_matrix=distance_matrix, epsilon=epsilon)
-    ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=mu, b=mu_true, max_iterations=5000)
+    ot = sinkhorn_solver(geom, a=mu, b=mu_true)
     return ot.reg_ot_cost
 
 def loss_fn(theta: Float[Array, "n "], st_marginal: Float[Array, "n "], distance_matrix: Float[Array, "n n"], epsilon: Union[Float[Array, ""], Any]):
@@ -180,6 +186,6 @@ learned, thetas, (w2_loss_vals, l2_loss_vals) = learn_st_marginal(st_marginal, d
 
 results_obj = {'learned': learned, 'thetas': thetas, 'w2_loss_vals': w2_loss_vals, 'l2_loss_vals': l2_loss_vals}
 
-experiment_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results'
-with open(os.path.join(experiment_dir, f'learn-st-marginal-week{week}.pkl'), 'wb') as f:
+experiment_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/learn-marginal-threshold'
+with open(os.path.join(experiment_dir, f'learn-st-marginal-week{week}-threshold{threshold}.pkl'), 'wb') as f:
     pickle.dump(results_obj, f)
