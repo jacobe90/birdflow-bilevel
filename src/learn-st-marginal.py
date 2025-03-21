@@ -29,7 +29,7 @@ from beartype import (
     BeartypeStrategy,
 )
 
-hdf_src = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/amewoo_2021_39km.hdf5'
+hdf_src = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/amewoo_2021_100km.hdf5'
 
 # initialize search over thresholds
 thresholds = jnp.linspace(1e-3, 5e-2, 10)
