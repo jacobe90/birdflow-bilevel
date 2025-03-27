@@ -28,6 +28,7 @@ from beartype import (
     BeartypeConf,
     BeartypeStrategy,
 )
+import time
 
 hdf_src = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/amewoo_2021_100km.hdf5'
 
@@ -181,10 +182,11 @@ eps_default = eps_defaults[week]
 n_steps = 2000
 scheduler = Scheduler(eps_default * 0.01, 200, 9.352196e-06,2000) # decline to eps_default * 0.01 after 1000 training steps
 lr = 1e-3
-print("starting training")
+t1 = time.time()
 learned, thetas, (w2_loss_vals, l2_loss_vals) = learn_st_marginal(st_marginal, distance_matrix, training_steps=n_steps, scheduler=scheduler, lr=lr)
+compute_time = time.time() - t1
 
-results_obj = {'learned': learned, 'thetas': thetas, 'w2_loss_vals': w2_loss_vals, 'l2_loss_vals': l2_loss_vals}
+results_obj = {'threshold': threshold, 'compute-time': compute_time, 'learned': learned, 'thetas': thetas, 'w2_loss_vals': w2_loss_vals, 'l2_loss_vals': l2_loss_vals}
 
 experiment_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/learn-marginal-threshold'
 with open(os.path.join(experiment_dir, f'learn-st-marginal-week{week}-threshold{threshold}.pkl'), 'wb') as f:

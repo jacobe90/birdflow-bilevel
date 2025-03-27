@@ -103,7 +103,7 @@ learning_rate = 0.1
 training_steps = 600
 rng_seed = 42
 save_pkl = True
-weeks = 5
+weeks = 23
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
 hdf_dst = os.path.join(out_dir, f'{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')

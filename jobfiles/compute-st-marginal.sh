@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -c 2
-#SBATCH --mem=15GB
+#SBATCH --mem=8GB
 #SBATCH -p gpu
-#SBATCH -G 3
+#SBATCH -G 1
 #SBATCH -t 1:00:00
 #SBATCH -o slurm-%x.%j.out
 

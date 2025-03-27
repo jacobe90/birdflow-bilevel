@@ -49,9 +49,10 @@ def train_model_w2(loss_fn,
     def update(params, opt_state, step):
         epsilons = get_eps_arr(step, schedulers)
         loss, grads = value_and_grad(w2_loss_fn, has_aux=True, argnums=0)(params, epsilons=epsilons)
+        l2_loss = loss_fn(params)
         updates, new_opt_state = optimizer.update(grads, opt_state)
         new_params = optax.apply_updates(params, updates)
-        return new_params, new_opt_state, loss
+        return new_params, new_opt_state, loss, l2_loss
     
     update = jit(update)
 
@@ -60,17 +61,21 @@ def train_model_w2(loss_fn,
         'w2_obs' : [],
         'dist' : [],
         'ent' : [],
+        'l2_obs': [],
     }
 
     for step in range(training_steps):
         print(f"step {step}")
-        params, opt_state, loss = update(params, opt_state, step)
+        params, opt_state, loss, l2_loss = update(params, opt_state, step)
         total_loss, loss_components = loss
+        l2_total_loss, l2_loss_components = l2_loss
         obs, dist, ent = loss_components
+        l2_obs, _, _ = l2_loss_components
         loss_dict['total'].append(float(total_loss))
         loss_dict['w2_obs'].append(float(obs))
         loss_dict['dist'].append(float(dist))
         loss_dict['ent'].append(float(ent))
+        loss_dict['l2_obs'].append(float(l2_obs))
     return params, loss_dict
 
 
@@ -152,7 +157,7 @@ params, loss_dict = train_model_w2(loss_fn,
                                     schedulers)
 
 if save_pkl:
-    with open(os.path.join(out_dir, f'ex4_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex41_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'ex4_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex41_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
