@@ -99,7 +99,10 @@ def get_epsilons(d_matrices_for_week):
         epsilons.append(geom.epsilon)   # get the default epsilon, based on mean of cost matrix
     return list(epsilons)
 
-sinkhorn_solver = jit(linear.solve, static_argnames=['max_iterations', 'progress_fn'])
+sinkhorn_solver = jit(partial(linear.solve,
+                              max_iterations=5000,
+                              threshold=5e-2,
+                              implicit_diff=ImplicitDiff()))
 
 def w2_distance(pred, true, d_matrix, eps):
     geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=eps)
