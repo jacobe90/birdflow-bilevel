@@ -88,7 +88,7 @@ learning_rate = 0.1
 training_steps = 600
 rng_seed = 42
 save_pkl = True
-weeks = 5
+weeks = 26
 
 # parameters for epsilon schedulers
 start = 2
