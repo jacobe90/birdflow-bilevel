@@ -8,7 +8,7 @@ from collections import namedtuple
 import jax.numpy as jnp
 from jax import jit, value_and_grad, grad, vmap
 from scipy.spatial.distance import pdist, squareform
-
+from functools import partial
 from ott.solvers import linear
 from ott.geometry import pointcloud, geometry
 from ott import utils
@@ -106,7 +106,7 @@ sinkhorn_solver = jit(partial(linear.solve,
 
 def w2_distance(pred, true, d_matrix, eps):
     geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=eps)
-    ot = sinkhorn_solver(geom, implicit_diff=ImplicitDiff(), a=pred, b=true, max_iterations=5000)
+    ot = sinkhorn_solver(geom, a=pred, b=true)
     return ot.reg_ot_cost
 
 def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week, epsilons):

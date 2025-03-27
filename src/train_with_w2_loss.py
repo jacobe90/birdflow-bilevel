@@ -64,7 +64,7 @@ def train_model_w2(loss_fn,
         'l2_obs': [],
     }
 
-    for step in range(training_steps):
+    for step in tqdm(range(training_steps), desc="Training Steps", unit="step"):
         print(f"step {step}")
         params, opt_state, loss, l2_loss = update(params, opt_state, step)
         total_loss, loss_components = loss
@@ -85,8 +85,8 @@ species = 'amewoo'
 ebirdst_year = 2021
 resolution = 100 
 obs_weight = 1.0
-dist_weight = 0
-ent_weight = 0
+dist_weight = 1e-2
+ent_weight = 1e-4
 dist_pow = 0.4
 dont_normalize = False
 learning_rate = 0.1
@@ -157,7 +157,7 @@ params, loss_dict = train_model_w2(loss_fn,
                                     schedulers)
 
 if save_pkl:
-    with open(os.path.join(out_dir, f'ex41_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex42_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'ex41_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex42_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
