@@ -19,6 +19,26 @@ import jax
 
 Datatuple = namedtuple('Datatuple', ['weeks', 'ncol', 'nrow', 'cells', 'distances', 'masks', 'big_mask'])
 
+class Scheduler:
+    def __init__(self, eps_default, start, final, decay_iters, decay_after):
+        self.eps_init = eps_default * start
+        self.eps_final = eps_default * final
+        self.decay = max(0, (self.eps_init - self.eps_final)) / decay_iters 
+        self.decay_after = decay_after
+    
+    def get_epsilon(self, it: Int[Array, ""]):
+        """
+        At training step it, get a value of epsilon
+        """
+        epsilon = self.eps_init
+        epsilon = jax.lax.cond(it > self.decay_after,
+                     lambda t : jax.lax.cond(t - self.decay * (it - self.decay_after) > self.eps_final, 
+                                             lambda s : t - self.decay * (it - self.decay_after), 
+                                             lambda s: self.eps_final, 
+                                             None),
+                     lambda t: t,
+                     epsilon)  # linear decay   
+        return epsilon
 
 def process_data(data_array):
     weeks, y_dim, x_dim = data_array.shape
@@ -65,27 +85,6 @@ def mask_input(true_densities, dtuple):
         coordinates_for_week.append(coord_grid[mask])
     
     return distance_matrices, distance_matrices_for_week, masked_densities
-
-class Scheduler:
-    def __init__(self, eps_default, start, final, decay_iters, decay_after):
-        self.eps_init = eps_default * start
-        self.eps_final = eps_default * final
-        self.decay = max(0, (self.eps_init - self.eps_final)) / decay_iters 
-        self.decay_after = decay_after
-    
-    def get_epsilon(self, it: Int[Array, ""]):
-        """
-        At training step it, get a value of epsilon
-        """
-        epsilon = self.eps_init
-        epsilon = jax.lax.cond(it > self.decay_after,
-                     lambda t : jax.lax.cond(t - self.decay * (it - self.decay_after) > self.eps_final, 
-                                             lambda s : t - self.decay * (it - self.decay_after), 
-                                             lambda s: self.eps_final, 
-                                             None),
-                     lambda t: t,
-                     epsilon)  # linear decay   
-        return epsilon
 
 def get_epsilon_schedulers(d_matrices_for_week, start, final, decay_iters, decay_after):
     eps_defaults = get_epsilons(d_matrices_for_week)
