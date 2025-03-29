@@ -90,7 +90,7 @@ ent_weight = 1e-4
 dist_pow = 0.4
 dont_normalize = False
 learning_rate = 0.1
-training_steps = 2100
+training_steps = 600
 rng_seed = 42
 save_pkl = True
 weeks = 26
@@ -98,24 +98,24 @@ weeks = 26
 # parameters for epsilon schedulers
 start = 2
 final = 0.01
-decay_after = 2000
+decay_after = 500
 decay_iters = 100
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
-hdf_dst = os.path.join(out_dir, f'{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
+hdf_dst = os.path.join(out_dir, f'ex42_rerun{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
 
 shutil.copyfile(hdf_src, hdf_dst)
 
-file = h5py.File(hdf_dst, 'r+')
+with h5py.File(hdf_dst, 'r+') as file:
 
-true_densities = np.asarray(file['distr']).T[:weeks]
-total_cells = true_densities.shape[1]
+    true_densities = np.asarray(file['distr']).T[:weeks]
+    total_cells = true_densities.shape[1]
 
-distance_vector = np.asarray(file['distances'])**dist_pow
-if not dont_normalize:
-    distance_vector *= 1 / (100**dist_pow)
+    distance_vector = np.asarray(file['distances'])**dist_pow
+    if not dont_normalize:
+        distance_vector *= 1 / (100**dist_pow)
 
-ncol, nrow, dynamic_masks, big_mask = get_plot_parameters(hdf_src)
+ncol, nrow, dynamic_masks, big_mask = get_plot_parameters(hdf_dst)
 dynamic_masks = dynamic_masks[:weeks]
 dtuple = Datatuple(weeks, ncol, nrow, total_cells, distance_vector, dynamic_masks, big_mask)
 distance_matrices, distance_matrices_for_week, masked_densities = mask_input(true_densities, dtuple)
@@ -157,7 +157,7 @@ params, loss_dict = train_model_w2(loss_fn,
                                     schedulers)
 
 if save_pkl:
-    with open(os.path.join(out_dir, f'ex42_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex42_rerun_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'ex42_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex42_rerun_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
