@@ -4,8 +4,13 @@ experiment-results/
 # slurm stuff
 *.out
 
-# ebird data R scripts & hdfs
-ebird-data-loading/
+# R stuff
+*.Rproj.user
+.RData
+.Rhistory
+
+# ebird data hdf5 files
+*.hdf5
 
 # stuff from scikit-learn
 dev-notebooks/CIFAR10
