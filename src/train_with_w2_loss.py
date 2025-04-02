@@ -90,7 +90,7 @@ ent_weight = 1e-4
 dist_pow = 0.4
 dont_normalize = False
 learning_rate = 0.1
-training_steps = 600
+training_steps = 1000
 rng_seed = 42
 save_pkl = True
 weeks = 26
@@ -98,11 +98,11 @@ weeks = 26
 # parameters for epsilon schedulers
 start = 2
 final = 0.01
-decay_after = 500
+decay_after = training_steps - 100
 decay_iters = 100
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
-hdf_dst = os.path.join(out_dir, f'ex42_rerun{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
+hdf_dst = os.path.join(out_dir, f'ex45_steps{training_steps}_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
 
 shutil.copyfile(hdf_src, hdf_dst)
 
@@ -135,7 +135,7 @@ loss_fn = jit(partial(loss_fn,
                       ent_weight=ent_weight))
 
 # instantiate w2 loss function
-schedulers = get_epsilon_schedulers(distance_matrices_for_week, start, final, decay_after, decay_iters)
+schedulers = get_epsilon_schedulers(distance_matrices_for_week, start, final, decay_iters, decay_after)
 
 w2_loss_fn = jit(partial(w2_loss_fn,
                          cells=cells,
@@ -157,7 +157,7 @@ params, loss_dict = train_model_w2(loss_fn,
                                     schedulers)
 
 if save_pkl:
-    with open(os.path.join(out_dir, f'ex42_rerun_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex45_steps{training_steps}_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'ex42_rerun_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex45_steps{training_steps}_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
