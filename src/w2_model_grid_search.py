@@ -91,7 +91,7 @@ for ow in obs_weights:
     for dw in dist_weights:
         for ew in ent_weights:
             for dp in dist_pows:
-                hyperparameters_arr.append({'ow': ow, 'dw': dw, 'ew': ew, 'dp': dp}))
+                hyperparameters_arr.append({'ow': ow, 'dw': dw, 'ew': ew, 'dp': dp})
 
 # get grid search idx
 GRID_SEARCH_IDX = int(os.getenv("SLURM_ARRAY_TASK_ID"))
@@ -100,7 +100,7 @@ GRID_SEARCH_IDX = int(os.getenv("SLURM_ARRAY_TASK_ID"))
 obs_weight, dist_weight, ent_weight, dist_pow = hyperparameters_arr[GRID_SEARCH_IDX].values()
 
 root = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/'
-out_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results'
+out_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2-grid-search'
 species = 'amewoo'
 ebirdst_year = 2021
 resolution = 100 
@@ -118,11 +118,11 @@ decay_after = training_steps - 100
 decay_iters = 100
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
-hdf_dst = os.path.join(out_dir, f'ex45_steps{training_steps}_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
+# hdf_dst = os.path.join(out_dir, f'ex45_steps{training_steps}_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
 
-shutil.copyfile(hdf_src, hdf_dst)
+# shutil.copyfile(hdf_src, hdf_dst)
 
-with h5py.File(hdf_dst, 'r+') as file:
+with h5py.File(hdf_src, 'r') as file:
 
     true_densities = np.asarray(file['distr']).T[:weeks]
     total_cells = true_densities.shape[1]
@@ -131,7 +131,7 @@ with h5py.File(hdf_dst, 'r+') as file:
     if not dont_normalize:
         distance_vector *= 1 / (100**dist_pow)
 
-ncol, nrow, dynamic_masks, big_mask = get_plot_parameters(hdf_dst)
+ncol, nrow, dynamic_masks, big_mask = get_plot_parameters(hdf_src)
 dynamic_masks = dynamic_masks[:weeks]
 dtuple = Datatuple(weeks, ncol, nrow, total_cells, distance_vector, dynamic_masks, big_mask)
 distance_matrices, distance_matrices_for_week, masked_densities = mask_input(true_densities, dtuple)
@@ -173,7 +173,7 @@ params, loss_dict = train_model_w2(loss_fn,
                                     schedulers)
 
 if save_pkl:
-    with open(os.path.join(out_dir, f'ex45_steps{training_steps}_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'ex45_steps{training_steps}_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
