@@ -103,6 +103,8 @@ sinkhorn_solver = jit(partial(linear.solve,
                               threshold=5e-2,
                               implicit_diff=ImplicitDiff()))
 
+W2_OBS_MULTIPLIER = 5e-3
+
 def w2_distance(pred, true, d_matrix, eps):
     geom = geometry.Geometry(cost_matrix=d_matrix, epsilon=eps)
     ot = sinkhorn_solver(geom, a=pred, b=true)
@@ -112,7 +114,7 @@ def w2_obs_loss(pred_densities, true_densities, d_matrices_for_week, epsilons):
     w2_obs = 0
     for pred, true, d_matrix, eps in zip(pred_densities, true_densities, d_matrices_for_week, epsilons):
         w2_obs += w2_distance(pred, true, d_matrix, eps)
-    return w2_obs
+    return W2_OBS_MULTIPLIER * w2_obs
 
 def obs_loss(pred_densities, true_densities):
     obs = 0
