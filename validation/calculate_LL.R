@@ -4,8 +4,8 @@
 # devtools::install_local("/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/tmp/BirdFlowPipeline", force = T, dependencies = TRUE)
 # devtools::install_local("/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/tmp/BirdFlowR", force = T, dependencies = TRUE)
 
-devtools::load_all("/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/validation/BirdFlowPipeline")
-devtools::load_all("/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/validation/BirdFlowR")
+devtools::load_all("/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/r-packages/BirdFlowPipeline")
+devtools::load_all("/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/r-packages/BirdFlowR")
 # load_all("/home/yc85_illinois_edu/BirdFlowR") 
 
 # Define functions
