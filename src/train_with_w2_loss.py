@@ -29,7 +29,7 @@ from beartype import (
     BeartypeStrategy,
 )
 import shutil
-import datetime
+from datetime import datetime
 from jax.nn import softmax
 
 def train_model_w2(loss_fn,
@@ -94,7 +94,7 @@ learning_rate = 0.1
 training_steps = 10
 rng_seed = 42
 save_pkl = False
-weeks = 26
+weeks = 53
 
 # parameters for epsilon schedulers
 start = 0.01
