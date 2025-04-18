@@ -79,11 +79,14 @@ get_interval_based_metrics <- function(birdflow_intervals, bf){
 
 
 # Load your birdflow model here:
-bf <- BirdFlowR::import_birdflow('/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2_26w_amewoo_2021_100km_obs1.0_ent0.0001_dist0.01_pow0.4.hdf5')
+bf <- BirdFlowR::import_birdflow('/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2_53w_amewoo_2021_100km_obs1.0_ent0.0001_dist0.01_pow0.4.hdf5')
 
+print(get_distr(bf, from_marginals = TRUE))
 # Load and track info
 species <- 'amewoo'
 params <- list(species = species)
+
+print(params)
 
 track_birdflowroutes_obj <- get_real_track(bf, params, filter=FALSE) # Real track. Not filtered by season. All year round.
 
@@ -97,5 +100,6 @@ interval_obj <- track_birdflowroutes_obj |>
 
 # Get the LL
 ll_df <- get_interval_based_metrics(interval_obj, bf)
-head(ll_df)
 
+head(ll_df)
+summary(ll_df)

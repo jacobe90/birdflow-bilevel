@@ -59,6 +59,7 @@ def train_model_w2(loss_fn,
 
     loss_dict = {
         'total' : [],
+        'obs' : [],
         'w2_obs' : [],
         'dist' : [],
         'ent' : [],
@@ -73,6 +74,7 @@ def train_model_w2(loss_fn,
         obs, dist, ent = loss_components
         l2_obs, _, _ = l2_loss_components
         loss_dict['total'].append(float(total_loss))
+        loss_dict['obs'].append(float(obs))
         loss_dict['w2_obs'].append(float(obs))
         loss_dict['dist'].append(float(dist))
         loss_dict['ent'].append(float(ent))
@@ -91,7 +93,7 @@ ent_weight = 1e-4
 dist_pow = 0.4
 dont_normalize = False
 learning_rate = 0.1
-training_steps = 10
+training_steps = 1000
 rng_seed = 42
 save_pkl = False
 weeks = 53

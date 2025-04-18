@@ -29,7 +29,8 @@ from beartype import (
     BeartypeStrategy,
 )
 import shutil
-
+from jax.nn import softmax
+from datetime import datetime
 
 def train_model_w2(loss_fn,
                    w2_loss_fn,
@@ -58,6 +59,7 @@ def train_model_w2(loss_fn,
 
     loss_dict = {
         'total' : [],
+        'obs' : [],
         'w2_obs' : [],
         'dist' : [],
         'ent' : [],
@@ -72,6 +74,7 @@ def train_model_w2(loss_fn,
         obs, dist, ent = loss_components
         l2_obs, _, _ = l2_loss_components
         loss_dict['total'].append(float(total_loss))
+        loss_dict['obs'].append(float(obs))
         loss_dict['w2_obs'].append(float(obs))
         loss_dict['dist'].append(float(dist))
         loss_dict['ent'].append(float(ent))
@@ -108,21 +111,21 @@ dont_normalize = False
 learning_rate = 0.1
 training_steps = 1000
 rng_seed = 42
-save_pkl = True
-weeks = 26
+save_pkl = False
+weeks = 53
 
 # parameters for epsilon schedulers
-start = 2
+start = 0.01
 final = 0.01
-decay_after = training_steps - 100
+decay_after = training_steps
 decay_iters = 100
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
-# hdf_dst = os.path.join(out_dir, f'ex45_steps{training_steps}_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
+hdf_dst = os.path.join(out_dir, f'w2_{weeks}w_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
 
-# shutil.copyfile(hdf_src, hdf_dst)
+shutil.copyfile(hdf_src, hdf_dst)
 
-with h5py.File(hdf_src, 'r') as file:
+with h5py.File(hdf_dst, 'r+') as file:
 
     true_densities = np.asarray(file['distr']).T[:weeks]
     total_cells = true_densities.shape[1]
@@ -177,3 +180,47 @@ if save_pkl:
         pickle.dump(params, f)
     with open(os.path.join(out_dir, f'w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
+
+# save to hdf5 file
+with h5py.File(hdf_dst, 'r+') as file:
+    t_start = 1
+    t_end = len(params) # zero indexing in range and extra item cancel each other out
+
+    # Initial distribution
+    d = softmax(params["Flow_Model/Initial_Params"]["z0"])
+
+    # Calculate marginals  "flow_amounts"
+    flow_amounts = []
+    for week in range(t_start, t_end):
+        z = params[f'Flow_Model/Week_{week}']['z']
+        trans_prop = softmax(z, axis=1)  # softmax on rows
+        flow = trans_prop * d.reshape(-1, 1) # convert d to a column and multiply each row in trans_prop by the corresponding scalar in d
+        flow_amounts.append(flow)
+        d = flow.sum(axis=0)
+        
+    margs = file.create_group('marginals')
+    for i, f in enumerate(flow_amounts):
+        margs.create_dataset(f'Week{i+1}_to_{i+2}', data=f)
+
+    del file['distances']
+        
+    del file['metadata/birdflow_model_date'] 
+    file.create_dataset('metadata/birdflow_model_date', data=str(datetime.today()))
+
+    hyper = file.create_group("metadata/hyperparameters")
+    hyper.create_dataset('obs_weight', data=obs_weight)
+    hyper.create_dataset('ent_weight', data=ent_weight)
+    hyper.create_dataset('dist_weight', data=dist_weight)
+    hyper.create_dataset('dist_pow', data=dist_pow)
+    hyper.create_dataset('learning_rate', data=learning_rate)
+    hyper.create_dataset('training_steps', data=training_steps)
+    hyper.create_dataset('rng_seed', data=rng_seed)
+    hyper.create_dataset('normalized', data=not dont_normalize)
+
+    loss_vals = file.create_group("metadata/loss_values")
+    loss_vals.create_dataset('total', data=loss_dict['total'])
+    loss_vals.create_dataset('obs', data=loss_dict['obs'])
+    loss_vals.create_dataset('dist', data=loss_dict['dist'])
+    loss_vals.create_dataset('ent', data=loss_dict['ent'])
+
+    file.close()
