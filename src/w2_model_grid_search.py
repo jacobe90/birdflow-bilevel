@@ -104,12 +104,15 @@ obs_weight, dist_weight, ent_weight, dist_pow = hyperparameters_arr[GRID_SEARCH_
 
 root = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/ebird-data-loading/'
 out_dir = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2-grid-search'
+hdf_dir = os.path.join(out_dir, 'hdfs')
+params_dir = os.path.join(out_dir, 'params')
+losses_dir = os.path.join(out_dir, 'losses')
 species = 'amewoo'
 ebirdst_year = 2021
 resolution = 100 
 dont_normalize = False
 learning_rate = 0.1
-training_steps = 1000
+training_steps = 400
 rng_seed = 42
 save_pkl = False
 weeks = 53
@@ -121,7 +124,7 @@ decay_after = training_steps
 decay_iters = 100
 
 hdf_src = os.path.join(root, f'{species}_{ebirdst_year}_{resolution}km.hdf5')
-hdf_dst = os.path.join(out_dir, f'w2_{weeks}w_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
+hdf_dst = os.path.join(hdf_dir, f'w2_{weeks}w_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.hdf5')
 
 shutil.copyfile(hdf_src, hdf_dst)
 
@@ -175,11 +178,11 @@ params, loss_dict = train_model_w2(loss_fn,
                                     optimizer,
                                     schedulers)
 
-if save_pkl:
-    with open(os.path.join(out_dir, f'w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
-        pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
-        pickle.dump(loss_dict, f)
+# save params and loss dicts
+with open(os.path.join(params_dir, f'w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    pickle.dump(params, f)
+with open(os.path.join(losses_dir, f'w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    pickle.dump(loss_dict, f)
 
 # save to hdf5 file
 with h5py.File(hdf_dst, 'r+') as file:
