@@ -12,8 +12,8 @@ time_per_iter = 60 * 60 * 3 # about 3 hours per iteration
 def array_to_launchstr(arr):
     return ','.join(str(x) for x in arr)
 
-jobs_to_run = list(range(81))
-run_number = 0
+jobs_to_run = [65, 70, 77, 80]
+run_number = 3
 while len(jobs_to_run) > 0:
     # launch all jobs in directory
     jobfile_path = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/jobfiles/w2-model-grid-search.sh'
@@ -45,8 +45,9 @@ while len(jobs_to_run) > 0:
             contents = f.read()
             msg1 = "No visible GPU devices" # error - couldnt find gpu
             msg2 = "DUE TO TIME LIMIT" # error due to timeout
-            msg3 = "Oh no!" # test error
-            if msg1 in contents or msg2 in contents or msg3 in contents: # we have an error,
+            msg3 = "CUDA_ERROR_ILLEGAL_ADDRESS"
+            msg4 = "CUDA_ERROR_ILLEGAL_INSTRUCTION"
+            if msg1 in contents or msg2 in contents or msg3 in contents or msg4 in contents: # we have an error,
                 match = re.search(r'_(\d+)\.out', jobfile)
                 error_ids.append(int(match.group(1)))
     

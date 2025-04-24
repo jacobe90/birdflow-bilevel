@@ -79,27 +79,46 @@ get_interval_based_metrics <- function(birdflow_intervals, bf){
 
 
 # Load your birdflow model here:
-bf <- BirdFlowR::import_birdflow('/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2_53w_amewoo_2021_100km_obs1.0_ent0.0001_dist0.01_pow0.4.hdf5')
+hdf_root <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2-grid-search/hdfs"
+filenames <- list.files(path=hdf_root)
+grid_search_avg_ll_vals <- list()
+count <- 1
+for (hdf_name in filenames) {
+  print(sprintf("Iteration %d of %d", count, length(filenames)))
+  count <- count + 1
 
-print(get_distr(bf, from_marginals = TRUE))
-# Load and track info
-species <- 'amewoo'
-params <- list(species = species)
+  hdf_path <- file.path(hdf_root, hdf_name) # get path to hdf
+  species <- 'amewoo'
+  params <- list(species = species)
 
-print(params)
+  # create birdflow object
+  bf <- BirdFlowR::import_birdflow(hdf_path)
 
-track_birdflowroutes_obj <- get_real_track(bf, params, filter=FALSE) # Real track. Not filtered by season. All year round.
+  track_birdflowroutes_obj <- get_real_track(bf, params, filter=FALSE) # Real track. Not filtered by season. All year round.
 
-# Convert birdflowroutes object to birdflowintervals object
-interval_obj <- track_birdflowroutes_obj |>
-  BirdFlowR::as_BirdFlowIntervals(max_n=100, # the maximum number of intervals to extract
-                                  min_day_interval=1,
-                                  max_day_interval=180,
-                                  min_km_interval=0,
-                                  max_km_interval=8000)
+  # Convert birdflowroutes object to birdflowintervals object
+  interval_obj <- track_birdflowroutes_obj |>
+    BirdFlowR::as_BirdFlowIntervals(max_n=100, # the maximum number of intervals to extract
+                                    min_day_interval=1,
+                                    max_day_interval=180,
+                                    min_km_interval=0,
+                                    max_km_interval=8000)
 
-# Get the LL
-ll_df <- get_interval_based_metrics(interval_obj, bf)
+  # Get the LL
+  ll_df <- get_interval_based_metrics(interval_obj, bf)
 
-head(ll_df)
-summary(ll_df)
+  # store hyperparameters and average log likelihood in array
+  avg_ll <- mean(ll_df$ll)
+
+  hyperparameters <- bf$metadata$hyperparameters
+  ll_and_hyperparameters <- c(hyperparameters, list(avg_ll = avg_ll))
+  grid_search_avg_ll_vals <- append(grid_search_avg_ll_vals, list(ll_and_hyperparameters))
+  
+}
+
+# get results df
+grid_search_results_df <- do.call(rbind, lapply(grid_search_avg_ll_vals, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
+
+# write results to a csv
+validation_dir <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/validation"
+write.csv(grid_search_results_df, file.path(validation_dir, "grid_search_avg_lls.csv"))
