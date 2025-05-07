@@ -60,65 +60,111 @@ get_interval_based_validation_one_transition_pair <- function(birdflow_interval_
 }
 
 get_interval_based_metrics <- function(birdflow_intervals, bf){
-  # weekly distributions directly from S&T
-  st_dists <- get_distr(bf, which = "all", from_marginals = FALSE)
-  
-  # Great circle distances between cells
-  gcd <- great_circle_distances(bf)
-  
-  # Calculate ll
-  dists <- sapply(split(birdflow_intervals$data, seq(nrow(birdflow_intervals$data))), get_interval_based_validation_one_transition_pair, bf, gcd, st_dists)
-  dists <- t(dists)
-  
-  dists <- as.data.frame(dists)
-  dists$date1 <- as.Date(dists$date1)
-  dists$date2 <- as.Date(dists$date2)
-  
-  return(dists)
-}
+    # weekly distributions directly from S&T
+    st_dists <- get_distr(bf, which = "all", from_marginals = FALSE)
+    
+    # Great circle distances between cells
+    gcd <- great_circle_distances(bf)
+    
+    # Calculate ll
+    dists <- sapply(split(birdflow_intervals$data, seq(nrow(birdflow_intervals$data))), get_interval_based_validation_one_transition_pair, bf, gcd, st_dists)
+    dists <- t(dists)
+    
+    dists <- as.data.frame(dists)
+    dists$date1 <- as.Date(dists$date1)
+    dists$date2 <- as.Date(dists$date2)
+    
+    return(dists)
+  }
 
-
-# Load your birdflow model here:
-hdf_root <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2-grid-search/hdfs"
-filenames <- list.files(path=hdf_root)
-grid_search_avg_ll_vals <- list()
-count <- 1
-for (hdf_name in filenames) {
-  print(sprintf("Iteration %d of %d", count, length(filenames)))
-  count <- count + 1
-
-  hdf_path <- file.path(hdf_root, hdf_name) # get path to hdf
+get_interval_obj <- function(hdf_root, species) {
+  filenames <- list.files(path=hdf_root)
+  hdf_path <- file.path(hdf_root, filenames[[1]]) # just use the first file in the list
+  bf <- BirdFlowR::import_birdflow(hdf_path)
   species <- 'amewoo'
   params <- list(species = species)
-
-  # create birdflow object
-  bf <- BirdFlowR::import_birdflow(hdf_path)
 
   track_birdflowroutes_obj <- get_real_track(bf, params, filter=FALSE) # Real track. Not filtered by season. All year round.
 
   # Convert birdflowroutes object to birdflowintervals object
   interval_obj <- track_birdflowroutes_obj |>
-    BirdFlowR::as_BirdFlowIntervals(max_n=100, # the maximum number of intervals to extract
+    BirdFlowR::as_BirdFlowIntervals(max_n=1000, # the maximum number of intervals to extract
                                     min_day_interval=1,
-                                    max_day_interval=180,
+                                    max_day_interval=365,
                                     min_km_interval=0,
                                     max_km_interval=8000)
 
-  # Get the LL
-  ll_df <- get_interval_based_metrics(interval_obj, bf)
+}
 
-  # store hyperparameters and average log likelihood in array
-  avg_ll <- mean(ll_df$ll)
+get_log_likelihood_df <- function(hdf_root, interval_obj, validation_dir, w2_models=TRUE) {
+  filenames <- list.files(path=hdf_root)
 
-  hyperparameters <- bf$metadata$hyperparameters
-  ll_and_hyperparameters <- c(hyperparameters, list(avg_ll = avg_ll))
-  grid_search_avg_ll_vals <- append(grid_search_avg_ll_vals, list(ll_and_hyperparameters))
+  grid_search_avg_ll_vals <- list()
+  count <- 1
+  for (hdf_name in filenames) {
+    print(sprintf("Iteration %d of %d", count, length(filenames)))
+    count <- count + 1
+
+    hdf_path <- file.path(hdf_root, hdf_name) # get path to hdf
+
+    # get birdflow object
+    bf <- BirdFlowR::import_birdflow(hdf_path)
+
+    # Get the LL
+    ll_df <- get_interval_based_metrics(interval_obj, bf)
+
+    # save ll_df to csv
+    hyperparameters <- bf$metadata$hyperparameters
+    interval_ll_filename <- sprintf("interval_lls_ow%f_ew%f_dw%f_dp%f.csv", hyperparameters$obs_weight, 
+                                                      hyperparameters$ent_weight,
+                                                      hyperparameters$dist_weight,
+                                                      hyperparameters$dist_pow)
+    interval_ll_filepath <- file.path(validation_dir, interval_ll_filename)
+    write.csv(ll_df, interval_ll_filepath)
+    
+    # store hyperparameters and average log likelihood in array
+    avg_ll <- mean(ll_df$ll)
+    avg_null_ll <- mean(ll_df$null_ll)
+    avg_ll_ci <- t.test(ll_df$ll)$conf # 95% confidence interval for avg ll
+    avg_ll_ci_lower <- avg_ll_ci[[1]]
+    avg_ll_ci_upper <- avg_ll_ci[[2]]
+    null_ll_ci <- t.test(ll_df$null_ll)$conf # 95% confidence interval for null ll
+    null_ll_ci_lower <- null_ll_ci[[1]]
+    null_ll_ci_upper <- null_ll_ci[[2]]
+    hyperparameters <- bf$metadata$hyperparameters
+    ll_and_hyperparameters <- c(hyperparameters, list(avg_ll = avg_ll, 
+                                                      avg_ll_conf_lower=avg_ll_ci_lower, 
+                                                      avg_ll_conf_upper=avg_ll_ci_upper, 
+                                                      avg_null_ll=avg_null_ll,
+                                                      avg_null_ll_conf_lower=null_ll_ci_lower,
+                                                      avg_null_ll_conf_upper=null_ll_ci_upper,
+                                                      interval_ll_filepath=interval_ll_filepath))
+    grid_search_avg_ll_vals <- append(grid_search_avg_ll_vals, list(ll_and_hyperparameters))
+    print(ll_and_hyperparameters)
+  }
+
+  # get results df
+  grid_search_results_df <- do.call(rbind, lapply(grid_search_avg_ll_vals, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
+
+  # write results to a csv
+  if(w2_models) {
+    write.csv(grid_search_results_df, file.path(validation_dir, "w2_grid_search_avg_lls.csv"))
+
+  } else {
+    write.csv(grid_search_results_df, file.path(validation_dir, "l2_grid_search_avg_lls.csv"))
+  }
   
 }
 
-# get results df
-grid_search_results_df <- do.call(rbind, lapply(grid_search_avg_ll_vals, function(x) as.data.frame(x, stringsAsFactors = FALSE)))
+# get ll dfs for w2 and l2 grid searches
+w2_hdf_root <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2-grid-search/hdfs"
+w2_validation_dir <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/w2-grid-search/validation"
+l2_validation_dir <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/l2-grid-search/validation"
+l2_hdf_root <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/experiment-results/l2-grid-search/hdfs"
 
-# write results to a csv
-validation_dir <- "/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/validation"
-write.csv(grid_search_results_df, file.path(validation_dir, "grid_search_avg_lls.csv"))
+# first compute interval obj
+interval_obj <- get_interval_obj(w2_hdf_root, 'amewoo')
+
+# save w2 / l2 log likelihood dfs
+get_log_likelihood_df(w2_hdf_root, interval_obj, w2_validation_dir)
+get_log_likelihood_df(l2_hdf_root, interval_obj, l2_validation_dir, w2_models=FALSE)

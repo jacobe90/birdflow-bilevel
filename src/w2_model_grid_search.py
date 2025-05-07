@@ -86,7 +86,7 @@ def train_model_w2(loss_fn,
 # obs_weight, dist_weight, ent_weight, dist_pow) = (1.0, 0.05, 0.01, 0.2)
 obs_weights = jnp.linspace(0.75, 1.25, num=3)
 dist_weights = jnp.linspace(4e-2, 6e-2, num=3)
-ent_weights = jnp.linspace(0.05, 0.015, num=3)
+ent_weights = jnp.linspace(0.005, 0.015, num=3)
 dist_pows = jnp.linspace(0.15, 0.25, num=3)
 
 hyperparameters_arr = []

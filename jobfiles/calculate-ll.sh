@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH -c 1
-#SBATCH --mem=10GB
+#SBATCH -c 3
+#SBATCH --mem=12GB
 #SBATCH -p cpu
-#SBATCH -t 1:00:00
+#SBATCH -t 6:00:00
 #SBATCH -o slurm-%j_%a.out
 
 module load r-rocker-ml-verse/4.4.0+apptainer

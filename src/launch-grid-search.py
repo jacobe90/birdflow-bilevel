@@ -12,14 +12,16 @@ time_per_iter = 60 * 60 * 3 # about 3 hours per iteration
 def array_to_launchstr(arr):
     return ','.join(str(x) for x in arr)
 
-jobs_to_run = [65, 70, 77, 80]
-run_number = 3
+jobs_to_run = list(range(81))
+run_number = 0
 while len(jobs_to_run) > 0:
-    # launch all jobs in directory
-    jobfile_path = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/jobfiles/w2-model-grid-search.sh'
-    parent_dir_path = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/logs/w2-grid-search'
+    # get jobfile path / logfile directory paths
+    jobfile_path = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/jobfiles/l2-model-grid-search.sh'
+    parent_dir_path = '/work/pi_drsheldon_umass_edu/birdflow_modeling/jacob_independent_study/birdflow-bilevel/logs/l2-grid-search'
     working_dir_path = os.path.join(parent_dir_path, f'run{run_number}-logs')
-    os.mkdir(working_dir_path)
+    os.mkdir(working_dir_path) # directory for logfiles
+
+    # launch array job
     subprocess.run(["sbatch", f"--array={array_to_launchstr(jobs_to_run)}%10", jobfile_path],
                    cwd=working_dir_path)
 
