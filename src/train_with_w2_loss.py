@@ -160,9 +160,9 @@ params, loss_dict = train_model_w2(loss_fn,
                                     schedulers)
 
 if save_pkl:
-    with open(os.path.join(out_dir, f'ex46_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex5_w2_params_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(params, f)
-    with open(os.path.join(out_dir, f'ex46_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
+    with open(os.path.join(out_dir, f'ex5_w2_losses_{species}_{ebirdst_year}_{resolution}km_obs{obs_weight}_ent{ent_weight}_dist{dist_weight}_pow{dist_pow}.pkl'), 'wb') as f:
         pickle.dump(loss_dict, f)
 
 # save to hdf5 file

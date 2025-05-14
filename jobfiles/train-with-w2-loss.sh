@@ -2,7 +2,7 @@
 #SBATCH -c 4
 #SBATCH --mem=10GB
 #SBATCH -p gypsum-1080ti
-#SBATCH -G 3
+#SBATCH -G 5
 #SBATCH -t 6:00:00
 #SBATCH -o slurm-%x.%j.out
 

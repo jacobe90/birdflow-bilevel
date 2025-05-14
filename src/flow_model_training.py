@@ -151,9 +151,9 @@ def w2_loss_fn(params, cells, true_densities, d_matrices, d_matrices_for_week, e
 
     obs = w2_obs_loss(pred_densities, true_densities, d_matrices_for_week, epsilons)
     dist = distance_loss(flows, d_matrices)
-    ent = ent_loss(flows, pred_densities)
+    ent = ent_loss(pred_densities, flows)
     
-    return (obs_weight * obs) + (dist_weight * dist) + (-1 * ent_weight * ent), (obs, dist, ent)
+    return (obs_weight * obs) + (dist_weight * dist) + (ent_weight * ent), (obs, dist, ent)
 
 def loss_fn(params, cells, true_densities, d_matrices, obs_weight, dist_weight, ent_weight):
     weeks = len(true_densities)
@@ -163,9 +163,9 @@ def loss_fn(params, cells, true_densities, d_matrices, obs_weight, dist_weight, 
     
     obs = obs_loss(pred_densities, true_densities)
     dist = distance_loss(flows, d_matrices)
-    ent = ent_loss(flows, pred_densities)
+    ent = ent_loss(pred_densities, flows)
     
-    return (obs_weight * obs) + (dist_weight * dist) + (-1 * ent_weight * ent), (obs, dist, ent)
+    return (obs_weight * obs) + (dist_weight * dist) + (ent_weight * ent), (obs, dist, ent)
 
 def train_model(loss_fn,
                 optimizer,
